@@ -25,11 +25,9 @@ import {
 } from "lucide-react";
 import OasisDashboard from "./components/OasisDashboard";
 import CheersBoard from "./components/CheersBoard";
-import CoffeeRoulette from "./components/CoffeeRoulette";
-import VibePolls from "./components/VibePolls";
 import ChaosLounge from "./components/ChaosLounge";
 import RetroGames from "./components/RetroGames";
-import { OfficeDetail, KudosCheers, OfficePoll, CoffeeMatch, ScannerLog, GameScore } from "./types";
+import { OfficeDetail, KudosCheers, ScannerLog, GameScore } from "./types";
 
 // PRE-DEFINED DETAILED DERIV REGIONAL OFFICE INFORMATION
 const DERIV_OFFICES: OfficeDetail[] = [
@@ -133,12 +131,17 @@ const DERIV_OFFICES: OfficeDetail[] = [
 
 export default function App() {
   const [kudos, setKudos] = useState<KudosCheers[]>([]);
-  const [polls, setPolls] = useState<OfficePoll[]>([]);
-  const [coffeeMatches, setCoffeeMatches] = useState<CoffeeMatch[]>([]);
   const [logs, setLogs] = useState<ScannerLog[]>([]);
   const [gameScores, setGameScores] = useState<GameScore[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "kudos" | "coffee" | "polls" | "chaos" | "games" | "logs">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "kudos" | "chaos" | "games" | "logs">("dashboard");
   
+  // Dynamic staff level calculation for gamified interaction
+  const totalStaffXP = gameScores.reduce((sum, s) => sum + Number(s.score || 0), 0) + kudos.length * 250 + logs.length * 50;
+  const officeLevel = Math.floor(totalStaffXP / 2000) + 1;
+  const xpNeededForNextLevel = 2000;
+  const currentLevelProgressSecured = totalStaffXP % 2000;
+  const progressPercent = Math.min(100, Math.floor((currentLevelProgressSecured / xpNeededForNextLevel) * 100));
+
   // Immersive App states
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chaosCatalyst, setChaosCatalyst] = useState<number>(75);
@@ -173,8 +176,6 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         setKudos(data.kudos || []);
-        setPolls(data.polls || []);
-        setCoffeeMatches(data.coffeeMatches || []);
         setLogs(data.logs || []);
         setGameScores(data.gameScores || []);
       }
@@ -245,48 +246,6 @@ export default function App() {
     } catch (err) {
       console.error("Error liking Kudos:", err);
     }
-  };
-
-  // Callback to Vote on Poll
-  const handleVotePoll = async (pollId: string, optionId: string) => {
-    try {
-      const response = await fetch("/api/poll/vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pollId, optionId })
-      });
-      if (response.ok) {
-        fetchState();
-      }
-    } catch (err) {
-      console.error("Error casting vote:", err);
-    }
-  };
-
-  // Join Coffee Roulette Pool & get Match
-  const handleTriggerJoinPool = async (office: string) => {
-    const response = await fetch("/api/coffee/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userOffice: office })
-    });
-    if (!response.ok) {
-      throw new Error("Could not find matching peer in Coffee Roulette pool.");
-    }
-    const match = await response.json();
-    fetchState();
-
-    // Push to Slack if set to auto-dispatch
-    const isSlackAutoEnabled = localStorage.getItem("oasis_auto_coffee") === "true";
-    if (isSlackAutoEnabled) {
-      handlePostSlack(
-        `☕ Coffee Match Established on DerivOasis!`,
-        "coffee",
-        match
-      );
-    }
-
-    return match;
   };
 
   // Custom live status broadcast
@@ -395,10 +354,46 @@ export default function App() {
             </div>
 
             {/* Sync connection status card */}
-            <div className="px-5 pt-4">
+            <div className="px-5 pt-4 space-y-2.5">
               <div className="text-[9px] text-slate-400 font-mono flex items-center gap-1.5 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/65">
                 <Clock size={11} className="text-deriv-red animate-spin-slow text-xs shrink-0" />
                 <span className="text-slate-350">Workspace Sync: <span className="text-emerald-400 font-bold">Active</span></span>
+              </div>
+
+              {/* Gamified Level & Badge HUD Card */}
+              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-850 rounded-xl p-3 space-y-2.5 relative overflow-hidden shadow-inner font-mono">
+                <div className="absolute top-1.5 right-2 flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">XP ENGINE</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-deriv-red/15 border border-deriv-red/35 flex items-center justify-center text-deriv-red font-black text-xs">
+                    Lv.{officeLevel}
+                  </div>
+                  <div>
+                    <div className="text-[8px] text-slate-400 font-bold uppercase tracking-wider leading-none">Oasis Voyage</div>
+                    <div className="text-[10px] text-emerald-400 font-black uppercase mt-1 leading-none tracking-tight">Level Tracker Hub</div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[8px] text-slate-500 font-bold leading-none">
+                    <span>XP: {totalStaffXP} / {officeLevel * 2000}</span>
+                    <span>{progressPercent}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-slate-900">
+                    <div 
+                      className="bg-emerald-450 h-full rounded-full shadow-xs transition-all duration-500 bg-gradient-to-r from-emerald-500 to-teal-400"
+                      style={{ width: `${progressPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="pt-1.5 border-t border-slate-905 flex items-center justify-between text-[7.5px] text-slate-400 leading-none">
+                  <span>🏆 Scores: <strong className="text-white">{gameScores.length} logged</strong></span>
+                  <span>🤝 Kudos: <strong className="text-white">{kudos.length}</strong></span>
+                </div>
               </div>
             </div>
 
@@ -420,24 +415,6 @@ export default function App() {
               >
                 <Gift size={16} className={activeTab === "kudos" ? "text-white" : "group-hover:text-deriv-red transition"} />
                 <span>Cheers & Kudos Board</span>
-              </button>
-
-              <button 
-                type="button" 
-                onClick={() => { setActiveTab("coffee"); setSidebarOpen(false); }}
-                className={getTabClass("coffee")}
-              >
-                <CupSoda size={16} className={activeTab === "coffee" ? "text-white" : "group-hover:text-deriv-red transition"} />
-                <span>Coffee Roulette Match</span>
-              </button>
-
-              <button 
-                type="button" 
-                onClick={() => { setActiveTab("polls"); setSidebarOpen(false); }}
-                className={getTabClass("polls")}
-              >
-                <Vote size={16} className={activeTab === "polls" ? "text-white" : "group-hover:text-deriv-red transition"} />
-                <span>Vibe Survey Polls</span>
               </button>
 
               <button 
@@ -494,10 +471,14 @@ export default function App() {
         </aside>
 
         {/* MAIN WORKSPACE CANVAS - True viewport content box */}
-        <main className="flex-1 flex flex-col min-h-0 bg-slate-100 overflow-hidden relative">
+        <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative transition-colors duration-300 ${
+          activeTab === "games" ? "bg-slate-950" : "bg-slate-100"
+        }`}>
           
           {/* Header Bar panel controls */}
-          <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex flex-wrap gap-4 items-center justify-between shadow-2xs shrink-0 z-10">
+          <header className={`px-6 py-3.5 flex flex-wrap gap-4 items-center justify-between shadow-2xs shrink-0 z-10 transition-all duration-300 ${
+            activeTab === 'games' ? 'bg-slate-900 border-b border-slate-800 text-white' : 'bg-white border-b border-slate-200 text-slate-800'
+          }`}>
             
             {/* Viewport label & Tab tag */}
             <div className="flex items-center gap-2">
@@ -505,11 +486,13 @@ export default function App() {
                 <Map size={13} className="text-slate-400 shrink-0" />
                 <span>WORKSPACE:</span>
               </span>
-              <span className="text-deriv-red font-black text-[11px] uppercase bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-lg">
+              <span className={`font-black text-[11px] uppercase border px-2.5 py-1 rounded-lg transition-colors ${
+                activeTab === 'games' 
+                  ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800' 
+                  : 'text-deriv-red bg-rose-50 border-rose-100'
+              }`}>
                 {activeTab === "dashboard" && "Office Switchboard"}
                 {activeTab === "kudos" && "Team Peer Shoutout Matrix"}
-                {activeTab === "coffee" && "Watercooler Matchmaking Hub"}
-                {activeTab === "polls" && "Lifestyle Vote Ledger"}
                 {activeTab === "chaos" && "Slack Desk & Chaos Lounge"}
                 {activeTab === "games" && "Retro Childhood Games Arena"}
                 {activeTab === "logs" && "Live Event Logs Console"}
@@ -520,14 +503,18 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-2.5 ml-auto">
               
               {/* Teammate Broadcast Form */}
-              <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 transition border border-slate-200 px-2.5 py-1 rounded-xl text-xs shadow-3xs max-w-[280px]">
+              <div className={`flex items-center gap-1.5 transition border px-2.5 py-1 rounded-xl text-xs shadow-3xs max-w-[280px] ${
+                activeTab === "games" ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+              }`}>
                 <Share2 size={12} className="text-slate-400 animate-pulse" />
                 <input 
                   type="text"
                   value={customStatus}
                   onChange={(e) => setCustomStatus(e.target.value)}
                   placeholder="Share quick status thought..."
-                  className="bg-transparent text-xs text-slate-850 font-bold focus:outline-hidden w-40 placeholder:text-slate-400 text-ellipsis truncate"
+                  className={`bg-transparent text-xs font-bold focus:outline-hidden w-40 placeholder:text-slate-400 text-ellipsis truncate ${
+                    activeTab === 'games' ? 'text-slate-100' : 'text-slate-850'
+                  }`}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       handleBroadcastStatus();
@@ -545,7 +532,9 @@ export default function App() {
               </div>
 
               {/* Chaos Regulator Dial */}
-              <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl text-xs shadow-3xs">
+              <div className={`hidden lg:flex items-center gap-2 border px-3 py-1 rounded-xl text-xs shadow-3xs ${
+                activeTab === "games" ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"
+              }`}>
                 <div className="flex items-center gap-1 text-slate-500 font-mono text-[9px] font-extrabold">
                   <Sliders size={12} className="text-deriv-red animate-pulse" />
                   <span>CHAOS:</span>
@@ -576,7 +565,9 @@ export default function App() {
               </div>
 
               {/* Active Teammate indicator badge */}
-              <span className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-3xs shrink-0">
+              <span className={`flex items-center gap-1.5 text-[10px] font-extrabold uppercase px-2.5 py-1.5 rounded-lg border shadow-3xs shrink-0 ${
+                activeTab === "games" ? "bg-slate-950 text-slate-400 border-slate-800" : "bg-slate-100 text-slate-600 border-slate-200"
+              }`}>
                 <Users size={11} className="text-slate-400 shrink-0" />
                 <span>Oasis online</span>
               </span>
@@ -584,7 +575,9 @@ export default function App() {
           </header>
 
           {/* Dynamic Content Panel view boundaries */}
-          <div className="flex-1 overflow-y-auto app-scrollbar p-6 bg-slate-50/50">
+          <div className={`flex-1 overflow-y-auto app-scrollbar p-6 ${
+            activeTab === "games" ? "bg-slate-950/95" : "bg-slate-50/50"
+          }`}>
             
             {/* View Tab screens mapping layout */}
             <div className="max-w-7xl w-full mx-auto space-y-6 pb-8 animate-fade-in">
@@ -603,21 +596,7 @@ export default function App() {
                 />
               )}
 
-              {activeTab === "coffee" && (
-                <CoffeeRoulette
-                  coffeeMatches={coffeeMatches}
-                  onTriggerJoinPool={handleTriggerJoinPool}
-                  onAddLog={addClientLog}
-                />
-              )}
 
-              {activeTab === "polls" && (
-                <VibePolls
-                  polls={polls}
-                  onVotePoll={handleVotePoll}
-                  onAddLog={addClientLog}
-                />
-              )}
 
               {activeTab === "chaos" && (
                 <ChaosLounge
@@ -649,7 +628,7 @@ export default function App() {
                   <div className="p-5 font-mono text-xs space-y-2 max-h-[500px] overflow-y-auto divide-y divide-slate-800/40">
                     {logs.length === 0 ? (
                       <div className="text-slate-500 italic py-6 text-center">
-                        No logs collected today. Try matching on Coffee Roulette or posting peer kudos!
+                        No logs collected today. Try challenging a childhood retro game or posting peer kudos!
                       </div>
                     ) : (
                       logs.map((log) => (
@@ -693,14 +672,14 @@ export default function App() {
               <div className="absolute whitespace-nowrap animate-marquee flex gap-12 items-center pl-4 font-bold text-slate-200">
                 <span>✨ SPECIAL CORRIDOR RUNWAY NEWS: MEDITERRANEAN BEACH RUN MEETS SHORELINE SUNSETS DESK IN MALTA ☀️</span>
                 <span>⭐ PEER CHEERS HIGHLIGHT: "{kudos.length > 0 ? kudos[0].message : 'Keep coding with high frequencies across Rwanda and Cyberjaya!'}" 🚀</span>
-                <span>✨ WATERCOOLER COFFEE ROULETTE IS ACTIVELY BINDING IN ASUNCIÓN, CYPRUS, AND MALTA OFFICES ☕</span>
+                <span>🏆 INTENSE ARCADES ACTIVE: CHALLENGE THE HIGHEST SCORE GALAXY WITH YOUR SQUAD RIGHT NOW! 👾</span>
                 <span>🔮 ORACLE DECREE: "{chaosCatalyst > 80 ? 'HIGH CAFFEINATED TIMELINES ARE OPEN. DANCE AT YOUR DESK' : 'RELAX AND SWELL VIBES CORRIDOR OPEN'}" ✨</span>
                 <span>⌨️ WEB AUDIO DESK SYNTH ACTIVE IN THE SLACK CHAOS LOUNGE - PLUG IN AND BREATHE🧘</span>
                 
                 {/* Marquee duplicate loops */}
                 <span>✨ SPECIAL CORRIDOR RUNWAY NEWS: MEDITERRANEAN BEACH RUN MEETS SHORELINE SUNSETS DESK IN MALTA ☀️</span>
                 <span>⭐ PEER CHEERS HIGHLIGHT: "{kudos.length > 0 ? kudos[0].message : 'Keep coding with high frequencies across Rwanda and Cyberjaya!'}" 🚀</span>
-                <span>✨ WATERCOOLER COFFEE ROULETTE IS ACTIVELY BINDING IN ASUNCIÓN, CYPRUS, AND MALTA OFFICES ☕</span>
+                <span>🏆 INTENSE ARCADES ACTIVE: CHALLENGE THE HIGHEST SCORE GALAXY WITH YOUR SQUAD RIGHT NOW! 👾</span>
               </div>
             </div>
           </footer>
