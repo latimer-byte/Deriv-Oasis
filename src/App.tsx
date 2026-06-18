@@ -20,14 +20,16 @@ import {
   Volume2,
   VolumeX,
   Radio,
-  Share2
+  Share2,
+  Gamepad2
 } from "lucide-react";
 import OasisDashboard from "./components/OasisDashboard";
 import CheersBoard from "./components/CheersBoard";
 import CoffeeRoulette from "./components/CoffeeRoulette";
 import VibePolls from "./components/VibePolls";
 import ChaosLounge from "./components/ChaosLounge";
-import { OfficeDetail, KudosCheers, OfficePoll, CoffeeMatch, ScannerLog } from "./types";
+import RetroGames from "./components/RetroGames";
+import { OfficeDetail, KudosCheers, OfficePoll, CoffeeMatch, ScannerLog, GameScore } from "./types";
 
 // PRE-DEFINED DETAILED DERIV REGIONAL OFFICE INFORMATION
 const DERIV_OFFICES: OfficeDetail[] = [
@@ -134,7 +136,8 @@ export default function App() {
   const [polls, setPolls] = useState<OfficePoll[]>([]);
   const [coffeeMatches, setCoffeeMatches] = useState<CoffeeMatch[]>([]);
   const [logs, setLogs] = useState<ScannerLog[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "kudos" | "coffee" | "polls" | "chaos" | "logs">("dashboard");
+  const [gameScores, setGameScores] = useState<GameScore[]>([]);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "kudos" | "coffee" | "polls" | "chaos" | "games" | "logs">("dashboard");
   
   // Immersive App states
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -173,6 +176,7 @@ export default function App() {
         setPolls(data.polls || []);
         setCoffeeMatches(data.coffeeMatches || []);
         setLogs(data.logs || []);
+        setGameScores(data.gameScores || []);
       }
     } catch (err) {
       console.error("Error retrieving DerivOasis backend state:", err);
@@ -447,6 +451,15 @@ export default function App() {
 
               <button 
                 type="button" 
+                onClick={() => { setActiveTab("games"); setSidebarOpen(false); }}
+                className={getTabClass("games")}
+              >
+                <Gamepad2 size={16} className={activeTab === "games" ? "text-white" : "group-hover:text-deriv-red transition"} />
+                <span>Retro Games Arena</span>
+              </button>
+
+              <button 
+                type="button" 
                 onClick={() => { setActiveTab("logs"); setSidebarOpen(false); }}
                 className={getTabClass("logs")}
               >
@@ -498,6 +511,7 @@ export default function App() {
                 {activeTab === "coffee" && "Watercooler Matchmaking Hub"}
                 {activeTab === "polls" && "Lifestyle Vote Ledger"}
                 {activeTab === "chaos" && "Slack Desk & Chaos Lounge"}
+                {activeTab === "games" && "Retro Childhood Games Arena"}
                 {activeTab === "logs" && "Live Event Logs Console"}
               </span>
             </div>
@@ -609,6 +623,14 @@ export default function App() {
                 <ChaosLounge
                   onAddLog={addClientLog}
                   onPostSlack={handlePostSlack}
+                />
+              )}
+
+              {activeTab === "games" && (
+                <RetroGames
+                  onAddLog={addClientLog}
+                  gameScores={gameScores}
+                  onRefreshScores={fetchState}
                 />
               )}
 

@@ -58,3 +58,12 @@ export interface ScannerLog {
   level: "info" | "success" | "warn" | "error";
   message: string;
 }
+
+export interface GameScore {
+  id: string;
+  gameId: string;
+  playerName: string;
+  playerOffice: string;
+  score: number;
+  timestamp: string;
+}

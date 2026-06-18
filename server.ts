@@ -38,6 +38,7 @@ interface SharedHubState {
   polls: any[];
   coffeeMatches: any[];
   logs: any[];
+  gameScores: any[];
 }
 
 let hubState: SharedHubState = {
@@ -120,6 +121,14 @@ let hubState: SharedHubState = {
       level: "info",
       message: "DerivOasis: Inbound Life Hub initialized. Serving global office coordinates."
     }
+  ],
+  gameScores: [
+    { id: "score-1", gameId: "snake", playerName: "Siti Nor", playerOffice: "cyberjaya", score: 280, timestamp: "2026-06-17T11:20:00.000Z" },
+    { id: "score-2", gameId: "breaker", playerName: "Luke Camilleri", playerOffice: "malta", score: 1850, timestamp: "2026-06-17T15:40:00.050Z" },
+    { id: "score-3", gameId: "bugs", playerName: "Samuel Mutiso", playerOffice: "kigali", score: 3200, timestamp: "2026-06-16T10:15:00.000Z" },
+    { id: "score-4", gameId: "memory", playerName: "Diego Benitez", playerOffice: "asuncion", score: 580, timestamp: "2026-06-16T14:22:00.000Z" },
+    { id: "score-5", gameId: "snake", playerName: "Yiannis Georgiou", playerOffice: "limassol", score: 150, timestamp: "2026-06-15T18:10:00.000Z" },
+    { id: "score-6", gameId: "breaker", playerName: "Fatima Al Mansoori", playerOffice: "dubai", score: 1420, timestamp: "2026-06-15T21:05:00.000Z" }
   ]
 };
 
@@ -144,8 +153,39 @@ app.get("/api/state", (req, res) => {
     kudos: hubState.kudos,
     polls: hubState.polls,
     coffeeMatches: hubState.coffeeMatches,
-    logs: hubState.logs
+    logs: hubState.logs,
+    gameScores: hubState.gameScores
   });
+});
+
+// 1b. Submit new Retro Arena score
+app.post("/api/games/score", (req, res) => {
+  const { gameId, playerName, playerOffice, score } = req.body;
+  if (!gameId || !playerName || !playerOffice || score === undefined) {
+    return res.status(400).json({ error: "Missing required game score fields." });
+  }
+
+  const newScore = {
+    id: `score-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    gameId,
+    playerName,
+    playerOffice,
+    score: Number(score),
+    timestamp: new Date().toISOString()
+  };
+
+  hubState.gameScores.push(newScore);
+  
+  const niceGameNames: Record<string, string> = {
+    snake: "Retro nokia Snake",
+    breaker: "Deriv Brick Breaker",
+    memory: "Munch Match memory",
+    bugs: "Retro Bug Squasher"
+  };
+  const displayName = niceGameNames[gameId] || gameId;
+  
+  addLog("success", `🕹️ ${playerName} (${playerOffice.toUpperCase()}) scored a massive ${score} pts on ${displayName}!`);
+  res.json(newScore);
 });
 
 // 2. Post a peer Cheers/Shoutout
